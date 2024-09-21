@@ -4,47 +4,61 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import androidx.navigation.NavHost
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+
+class Inventario {
+    companion object {
+        val produtos = mutableListOf<Produto>()
+
+        fun calcularValorTotalEstoque(): Double {
+            return produtos.sumOf { it.preco * it.quantidade }
+        }
+
+        fun calcularQuantidadeTotalProdutos(): Int {
+            return produtos.sumOf { it.quantidade }
+        }
+
+    }
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         setContent {
-
+            App()
         }
     }
 }
 
+
 @Composable
 fun App() {
     val navController = rememberNavController()
-    val produtos = remember { mutableListOf<Produto>() }
 
     NavHost(navController = navController, startDestination = "cadastro") {
-        composable("cadastro") { TelaCadastro(navController, produtos) }
-        composable("listaProdutos") { TelaListaProdutos(navController, produtos) }
+        composable("cadastro") { TelaCadastro(navController) }
+        composable("listaProdutos") { TelaListaProdutos(navController) }
+        composable("estatisticasProdutos") { TelaEstatisticas(navController) }
         composable("detalhesProduto/{produtoNome}") { backStackEntry ->
             val produtoNome = backStackEntry.arguments?.getString("produtoNome") ?: ""
             TelaDetalhesProduto(navController, produtoNome)
@@ -52,73 +66,149 @@ fun App() {
     }
 }
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TelaCadastro(navController: NavController, produtos: MutableList<Produto>) {
+fun TelaCadastro(navController: NavController) {
+    val context = LocalContext.current
     var nome by remember { mutableStateOf("") }
     var categoria by remember { mutableStateOf("") }
     var preco by remember { mutableStateOf("") }
-    var qtd by remember { mutableStateOf("") }
-
-    val context = LocalContext.current
+    var quantidade by remember { mutableStateOf("") }
 
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().padding(16.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        TextField(value = nome, onValueChange = { nome = it }, label = { Text("Nome do produto:") })
-        TextField(value = categoria, onValueChange = { categoria = it }, label = { Text("Categoria:") })
-        TextField(value = preco, onValueChange = { preco = it }, label = { Text("Preço:") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
-        TextField(value = qtd, onValueChange = { qtd = it }, label = { Text("Quantidade:") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-
+        TextField(
+            value = nome,
+            onValueChange = { nome = it },
+            label = { Text("Nome do Produto") })
+        Spacer(modifier = Modifier.height(8.dp))
+        TextField(value = categoria,
+            onValueChange = { categoria = it },
+            label = { Text("Categoria") })
+        Spacer(modifier = Modifier.height(8.dp))
+        TextField(
+            value = preco,
+            onValueChange = { preco = it },
+            label = { Text("Preço") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        TextField(
+            value = quantidade,
+            onValueChange = { quantidade = it },
+            label = { Text("Quantidade em Estoque") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
         Button(onClick = {
-            if (nome.isBlank() || categoria.isBlank() || preco.isBlank() || qtd.isBlank()) {
-                Toast.makeText(context, "Por favor, preencha todos os campos.", Toast.LENGTH_SHORT).show()
+            if (nome.isNotEmpty() && categoria.isNotEmpty() && preco.isNotEmpty() && quantidade.isNotEmpty()) {
+                val precoDouble = preco.toDoubleOrNull()
+                val quantidadeInt = quantidade.toIntOrNull()
+                if (precoDouble != null && quantidadeInt != null) {
+                    Inventario.produtos.add(Produto(nome, categoria, precoDouble, quantidadeInt))
+                    Toast.makeText(context, "Produto cadastrado!", Toast.LENGTH_SHORT).show()
+                    navController.navigate("listaProdutos")
+                }else if (quantidade.toInt() <= 0 || preco.toInt() <= 0){
+                    Toast.makeText(context, "Quantidade e preço devem ser maiores que 0", Toast.LENGTH_SHORT).show()
+                }
+                else {
+                    Toast.makeText(context, "Preço e Quantidade devem ser numéricos", Toast.LENGTH_SHORT).show()
+                }
             } else {
-                val precoDouble = preco.toDoubleOrNull() ?: 0.0
-                val quantidadeInt = qtd.toIntOrNull() ?: 0
-
-                val produto = Produto(nome, categoria, precoDouble, quantidadeInt)
-                produtos.add(produto)
-
-                // Limpa os campos após cadastrar
-                nome = ""
-                categoria = ""
-                preco = ""
-                qtd = ""
-
-                // Navega para a tela de lista de produtos
-                navController.navigate("listaProdutos")
+                Toast.makeText(context, "Todos os campos são obrigatórios", Toast.LENGTH_SHORT).show()
             }
         }) {
-            Text("Cadastrar Produto")
+            Text("Cadastrar")
         }
     }
 }
 
 @Composable
-fun TelaListaProdutos(navController: NavController, produtos: List<Produto>) {
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
-        items(produtos) { produto ->
-            ListItem(
-                text = { Text(produto.exibir()) },
-                trailing = {
+fun TelaListaProdutos(navController: NavController) {
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        Text(text = "Lista de Produtos", fontSize = 30.sp, modifier = Modifier.padding(top = 30.dp))
+        Spacer(modifier = Modifier.height(8.dp))
+        LazyColumn {
+            items(Inventario.produtos) { produto ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = "${produto.nome} (${produto.quantidade} unidades)")
                     Button(onClick = {
-                        // Navega para a tela de detalhes do produto
                         navController.navigate("detalhesProduto/${produto.nome}")
                     }) {
                         Text("Detalhes")
                     }
                 }
-            )
+            }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = { navController.navigate("estatisticasProdutos") },
+            modifier = Modifier.align(Alignment.CenterHorizontally)
+        ) {
+            Text("Ver Estatísticas")
+        }
+        Button(
+            onClick = { navController.popBackStack() },
+            modifier = Modifier.align(Alignment.CenterHorizontally)
+        ) {
+            Text("Voltar ao Cadastro")
         }
     }
 }
 
-@Preview(showBackground = true)
 @Composable
-fun Preview()
-{
+fun TelaDetalhesProduto(navController: NavController, produtoNome: String) {
+    val produto = Inventario.produtos.find { it.nome == produtoNome }
 
+    if (produto != null) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(text = "Detalhes do Produto")
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(text = "Nome: ${produto.nome}")
+            Text(text = "Categoria: ${produto.categoria}")
+            Text(text = "Preço: R$${produto.preco}")
+            Text(text = "Quantidade em Estoque: ${produto.quantidade}")
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(onClick = { navController.popBackStack() }) {
+                Text("Voltar")
+            }
+        }
+    } else {
+        Text("Produto não encontrado")
+    }
 }
+
+@Composable
+fun TelaEstatisticas(navController: NavController) {
+    val valorTotalEstoque = Inventario.calcularValorTotalEstoque()
+    val quantidadeTotalProdutos = Inventario.calcularQuantidadeTotalProdutos()
+
+    Column(
+        modifier = Modifier.fillMaxSize().padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(text = "Estatísticas do Inventário")
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(text = "Quantidade Total de Produtos: $quantidadeTotalProdutos")
+        Text(text = "Valor Total do Estoque: R$$valorTotalEstoque")
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(onClick = { navController.popBackStack() }) {
+            Text("Voltar")
+        }
+    }
+}
+
+

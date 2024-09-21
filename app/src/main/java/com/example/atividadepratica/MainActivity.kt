@@ -124,6 +124,13 @@ fun TelaCadastro(navController: NavController) {
         }) {
             Text("Cadastrar")
         }
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = { navController.navigate("listaProdutos") },
+            modifier = Modifier.align(Alignment.CenterHorizontally)
+        ) {
+            Text("Ir para a Lista")
+        }
     }
 }
 
@@ -174,7 +181,7 @@ fun TelaDetalhesProduto(navController: NavController, produtoNome: String) {
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(text = "Detalhes do Produto")
+            Text(text = "Detalhes do Produto", fontSize = 20.sp)
             Spacer(modifier = Modifier.height(16.dp))
             Text(text = "Nome: ${produto.nome}")
             Text(text = "Categoria: ${produto.categoria}")
@@ -210,5 +217,3 @@ fun TelaEstatisticas(navController: NavController) {
         }
     }
 }
-
-
